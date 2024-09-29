@@ -1,0 +1,1 @@
+export { IMAGES } from '@/constants/contents/images-constant'

@@ -1,0 +1,71 @@
+resources:
+  - repo: self
+
+pool:
+  name: HolooCloudSoftwareManagementUI
+
+jobs:
+  - job: GetVersion
+    displayName: Analyze Project
+    timeoutInMinutes: 25
+    workspace:
+      clean: all
+    continueOnError: false
+
+  - job: Build
+    displayName: Build
+    steps:
+      - checkout: none
+
+      - task: SonarQubePrepare@5
+        inputs:
+          SonarQube: "SonarHCSMUI"
+          scannerMode: CLI
+          projectKey: "HolooAgent_Holoo.Cloud.Software.Management.UI"
+          projectName: "Holoo.Cloud.Software.Management.UI"
+          projectVersion: "1.0"
+          extraProperties: |
+            sonar.projectKey=HolooAgent_Holoo.Cloud.Software.Management.UI
+            sonar.projectName=Holoo.Cloud.Software.Management.UI
+            sonar.javascript.lcov.reportPaths=**/coverage/lcov.info
+            sonar.exclusions=.next/**, coverage/**, node_modules/**, __tests__/**, jest.config.js, jest.setup.js
+
+      - task: CmdLine@2
+        displayName: Install Package
+        inputs:
+          script: |
+            npm install
+
+      - task: CmdLine@2
+        displayName: Build Project
+        inputs:
+          script: |
+            npm run build
+
+      - task: CmdLine@2
+        displayName: Clean Cache Jest
+        inputs:
+          script: |
+           npm cache clean --force
+
+      - task: CmdLine@2
+        displayName: Test and coverage
+        inputs:
+          script: |
+            npm test
+
+      - task: SonarQubeAnalyze@5
+        displayName: "Run Code Analysis"
+
+      - task: PublishCodeCoverageResults@1
+        displayName: "Publish code coverage"
+        inputs:
+          codeCoverageTool: Cobertura
+          summaryFileLocation: "**/coverage/lcov.info"
+          failIfCoverageEmpty: false
+          reportDirectory: '$(Build.SourcesDirectory)\coverage\lcov-report'
+
+      - task: SonarQubePublish@5
+        displayName: "Publish Quality Gate Result"
+        inputs:
+          pollingTimeoutSec: "300"
